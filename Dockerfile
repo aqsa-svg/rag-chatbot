@@ -1,15 +1,17 @@
-FROM python:3.11-slim
+FROM python:3.10-slim
 
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 COPY . .
 
-# Build index at container build time (requires data/conversations.csv)
+ENV PYTHONPATH=backend
+ENV PORT=7860
+
 RUN python build_index.py
 
-EXPOSE 5000
+EXPOSE 7860
 
 CMD ["python", "app.py"]
