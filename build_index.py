@@ -15,7 +15,7 @@ import json
 import argparse
 
 # Add backend dir to path
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
 
 from data_loader import load_conversations
 from rag_engine import CheckpointBuilder, save_index
