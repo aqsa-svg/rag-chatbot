@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+data/messages.json
+data/index/
+data/persona.json
+*.pkl

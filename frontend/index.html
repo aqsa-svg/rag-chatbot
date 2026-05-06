@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ConvoRAG — Conversation Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0d0f14;
+  --surface: #141720;
+  --surface2: #1a1e2b;
+  --border: #252a3a;
+  --accent: #5b6af0;
+  --accent2: #9b5de5;
+  --green: #2dd4aa;
+  --yellow: #f4c430;
+  --red: #f05b5b;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  grid-template-rows: 56px 1fr;
+  height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  grid-column: 1 / -1;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+}
+
+.logo {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+}
+.logo span { color: var(--green); }
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--muted);
+  background: var(--bg);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; }
+  50% { opacity:0.3; }
+}
+
+.header-stats {
+  margin-left: auto;
+  display: flex;
+  gap: 20px;
+}
+.stat-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.stat-badge strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ── SIDEBAR ── */
+aside {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-title {
+  font-size: 9px;
+  font-family: var(--mono);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+/* Quick questions */
+.quick-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text);
+  cursor: pointer;
+  margin-bottom: 6px;
+  transition: all 0.15s;
+  line-height: 1.4;
+}
+.quick-btn:hover {
+  border-color: var(--accent);
+  background: rgba(91,106,240,0.08);
+  color: #fff;
+}
+
+/* Persona panel */
+.persona-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+.persona-panel::-webkit-scrollbar { width: 4px; }
+.persona-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.trait-chip {
+  display: inline-block;
+  background: rgba(91,106,240,0.15);
+  border: 1px solid rgba(91,106,240,0.3);
+  color: #a5b4fc;
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin: 2px;
+}
+.habit-chip {
+  display: inline-block;
+  background: rgba(45,212,170,0.1);
+  border: 1px solid rgba(45,212,170,0.25);
+  color: #6ee7d4;
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin: 2px;
+}
+.topic-chip {
+  display: inline-block;
+  background: rgba(155,93,229,0.1);
+  border: 1px solid rgba(155,93,229,0.25);
+  color: #c4b5fd;
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin: 2px;
+}
+
+.persona-row {
+  margin-bottom: 14px;
+}
+.persona-label {
+  font-size: 9px;
+  font-family: var(--mono);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+/* ── MAIN CHAT ── */
+main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tab bar */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0 20px;
+}
+.tab {
+  font-size: 11px;
+  font-family: var(--mono);
+  padding: 12px 20px;
+  cursor: pointer;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.tab:hover:not(.active) { color: var(--text); }
+
+/* Tab panels */
+.tab-panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+.tab-panel.active { display: flex; }
+
+/* ── CHAT PANEL ── */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.msg {
+  max-width: 80%;
+  animation: fadeUp 0.25s ease;
+}
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(8px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+.msg.user { align-self: flex-end; }
+.msg.bot  { align-self: flex-start; }
+
+.msg-bubble {
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.msg.user .msg-bubble {
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.msg.bot .msg-bubble {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+  color: var(--text);
+}
+
+.msg-meta {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--muted);
+  margin-top: 4px;
+  padding: 0 4px;
+}
+.msg.user .msg-meta { text-align: right; }
+
+.sources-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.source-tag {
+  font-size: 10px;
+  font-family: var(--mono);
+  background: rgba(91,106,240,0.1);
+  border: 1px solid rgba(91,106,240,0.25);
+  color: #a5b4fc;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* Markdown rendering */
+.msg-bubble h2 { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--green); }
+.msg-bubble strong { color: #fff; }
+.msg-bubble em { color: var(--muted); font-style: italic; }
+.msg-bubble blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  margin: 6px 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.msg-bubble ul, .msg-bubble ol {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+.msg-bubble li { margin: 2px 0; }
+.msg-bubble hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+
+/* Chat input */
+.chat-input-area {
+  padding: 16px 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.chat-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-family: var(--sans);
+  color: var(--text);
+  resize: none;
+  min-height: 44px;
+  max-height: 120px;
+  outline: none;
+  transition: border 0.15s;
+}
+.chat-input:focus { border-color: var(--accent); }
+.chat-input::placeholder { color: var(--muted); }
+
+.send-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  font-size: 18px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.send-btn:hover { background: #4a58e0; transform: scale(1.05); }
+.send-btn:disabled { background: var(--border); cursor: not-allowed; transform: none; }
+
+/* ── TOPICS PANEL ── */
+.topics-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+.topics-panel::-webkit-scrollbar { width: 4px; }
+.topics-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.topic-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.topic-card:hover {
+  border-color: var(--accent);
+  background: rgba(91,106,240,0.04);
+}
+.topic-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.topic-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  min-width: 60px;
+}
+.topic-range {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+.topic-count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--surface);
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: var(--muted);
+}
+.topic-keywords { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.kw-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  background: rgba(244,196,48,0.1);
+  border: 1px solid rgba(244,196,48,0.2);
+  color: var(--yellow);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.topic-summary {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ── CHECKPOINTS PANEL ── */
+.checkpoints-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+.checkpoint-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.cp-id {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--border);
+  line-height: 1;
+}
+.cp-range {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.cp-summary {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  border-bottom-left-radius: 4px;
+  width: fit-content;
+}
+.typing-dot {
+  width: 6px; height: 6px;
+  background: var(--muted);
+  border-radius: 50%;
+  animation: typing 1.2s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing {
+  0%,60%,100% { transform: translateY(0); opacity:0.4; }
+  30% { transform: translateY(-4px); opacity:1; }
+}
+
+.welcome-msg {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+.welcome-msg h2 { font-size: 22px; color: var(--text); margin-bottom: 8px; }
+.welcome-msg p { font-size: 13px; max-width: 400px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Convo<span>RAG</span></div>
+  <div class="status-pill">
+    <span class="status-dot"></span>
+    <span id="status-text">loading...</span>
+  </div>
+  <div class="header-stats">
+    <div class="stat-badge">Messages: <strong id="stat-msgs">—</strong></div>
+    <div class="stat-badge">Topics: <strong id="stat-topics">—</strong></div>
+    <div class="stat-badge">Chunks: <strong id="stat-chunks">—</strong></div>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<aside>
+  <div class="sidebar-section">
+    <div class="sidebar-title">Quick Questions</div>
+    <button class="quick-btn" onclick="sendQuick('What kind of person is this user?')">What kind of person is this user?</button>
+    <button class="quick-btn" onclick="sendQuick('What are their habits?')">What are their habits?</button>
+    <button class="quick-btn" onclick="sendQuick('How do they talk and communicate?')">How do they talk?</button>
+    <button class="quick-btn" onclick="sendQuick('What are their dominant personality traits?')">Personality traits?</button>
+    <button class="quick-btn" onclick="sendQuick('What are their personal facts like job or location?')">Personal facts?</button>
+    <button class="quick-btn" onclick="sendQuick('What topics do they discuss most?')">Favourite topics?</button>
+  </div>
+  <div class="persona-panel" id="persona-panel">
+    <div class="sidebar-title">User Persona</div>
+    <div id="persona-loading" style="font-size:11px;font-family:var(--mono);color:var(--muted)">
+      <span class="spinner"></span>loading persona...
+    </div>
+    <div id="persona-content" style="display:none">
+      <div class="persona-row">
+        <div class="persona-label">Personality</div>
+        <div id="p-traits"></div>
+      </div>
+      <div class="persona-row">
+        <div class="persona-label">Habits</div>
+        <div id="p-habits"></div>
+      </div>
+      <div class="persona-row">
+        <div class="persona-label">Top Topics</div>
+        <div id="p-topics"></div>
+      </div>
+      <div class="persona-row">
+        <div class="persona-label">Comm Style</div>
+        <div id="p-comm" style="font-size:11px;font-family:var(--mono);color:var(--muted)"></div>
+      </div>
+      <div class="persona-row">
+        <div class="persona-label">Personal Facts</div>
+        <div id="p-facts" style="font-size:11px;font-family:var(--mono);color:var(--muted)"></div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('chat')">💬 Chat</div>
+    <div class="tab" onclick="switchTab('topics')">🗺 Topics</div>
+    <div class="tab" onclick="switchTab('checkpoints')">📦 Checkpoints</div>
+  </div>
+
+  <!-- CHAT TAB -->
+  <div class="tab-panel active" id="tab-chat">
+    <div class="chat-messages" id="chat-messages">
+      <div class="welcome-msg">
+        <h2>ConvoRAG</h2>
+        <p>Ask anything about the user's conversations, habits, personality, or communication style.</p>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <textarea class="chat-input" id="chat-input" rows="1"
+        placeholder="Ask about the user... (Enter to send, Shift+Enter for newline)"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">↑</button>
+    </div>
+  </div>
+
+  <!-- TOPICS TAB -->
+  <div class="tab-panel" id="tab-topics">
+    <div class="topics-panel" id="topics-list">
+      <div style="font-size:12px;font-family:var(--mono);color:var(--muted);text-align:center;padding:40px">
+        <span class="spinner"></span> loading topics...
+      </div>
+    </div>
+  </div>
+
+  <!-- CHECKPOINTS TAB -->
+  <div class="tab-panel" id="tab-checkpoints">
+    <div class="checkpoints-panel" id="checkpoints-list">
+      <div style="font-size:12px;font-family:var(--mono);color:var(--muted);text-align:center;padding:40px">
+        <span class="spinner"></span> loading checkpoints...
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = '';  // same-origin
+
+// ── UTILS ────────────────────────────────────────────────────
+
+function md(text) {
+  // Lightweight markdown renderer
+  return text
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^  • (.+)$/gm, '<li>$1</li>')
+    .replace(/^  (\d+)\. (.+)$/gm, '<li>$2</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .replace(/^---$/gm, '<hr/>')
+    .replace(/\n\n/g, '<br/><br/>')
+    .replace(/\n/g, '<br/>');
+}
+
+function timeAgo() {
+  return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+// ── STATS ────────────────────────────────────────────────────
+
+async function loadStats() {
+  try {
+    const r = await fetch(`${API}/api/stats`);
+    const d = await r.json();
+    document.getElementById('stat-msgs').textContent = d.total_messages?.toLocaleString() || '—';
+    document.getElementById('stat-topics').textContent = d.total_topics || '—';
+    document.getElementById('stat-chunks').textContent = d.total_chunks || '—';
+    document.getElementById('status-text').textContent = 'ready';
+  } catch(e) {
+    document.getElementById('status-text').textContent = 'error';
+  }
+}
+
+// ── PERSONA ──────────────────────────────────────────────────
+
+async function loadPersona() {
+  try {
+    const r = await fetch(`${API}/api/persona`);
+    const p = await r.json();
+
+    const traits = p.personality_traits?.dominant_traits || [];
+    document.getElementById('p-traits').innerHTML =
+      traits.map(t => `<span class="trait-chip">${t}</span>`).join('') || '<span style="color:var(--muted);font-size:11px">none detected</span>';
+
+    const habits = p.habits?.detected || [];
+    document.getElementById('p-habits').innerHTML =
+      habits.slice(0,8).map(h => `<span class="habit-chip">${h.replace(/_/g,' ')}</span>`).join('') || '<span style="color:var(--muted);font-size:11px">none detected</span>';
+
+    const topics = p.top_topics || [];
+    document.getElementById('p-topics').innerHTML =
+      topics.slice(0,5).map(t => `<span class="topic-chip">${t}</span>`).join('') || '';
+
+    const cs = p.communication_style || {};
+    document.getElementById('p-comm').innerHTML =
+      `Tone: <strong style="color:var(--text)">${cs.tone || '?'}</strong><br/>
+       Style: <strong style="color:var(--text)">${cs.message_style || '?'}</strong><br/>
+       Avg words: <strong style="color:var(--text)">${cs.avg_message_length_words || '?'}</strong><br/>
+       Emojis: ${cs.emoji_user ? '✅' : '❌'} | Abbrevs: ${cs.abbreviation_user ? '✅' : '❌'}`;
+
+    const facts = p.personal_facts || {};
+    const factLines = Object.entries(facts).map(([k,v]) =>
+      `<strong style="color:var(--text)">${k.replace(/_/g,' ')}</strong>: ${Array.isArray(v) ? v.slice(0,2).join(', ') : v}`
+    );
+    document.getElementById('p-facts').innerHTML = factLines.join('<br/>') || 'No facts extracted';
+
+    document.getElementById('persona-loading').style.display = 'none';
+    document.getElementById('persona-content').style.display = 'block';
+  } catch(e) {
+    document.getElementById('persona-loading').innerHTML = '⚠ failed to load';
+  }
+}
+
+// ── TOPICS ───────────────────────────────────────────────────
+
+async function loadTopics() {
+  try {
+    const r = await fetch(`${API}/api/topics?per_page=200`);
+    const d = await r.json();
+    const el = document.getElementById('topics-list');
+    el.innerHTML = `<div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:16px">
+      ${d.total} detected topic segments (chronological)
+    </div>`;
+    for (const tc of d.topics) {
+      const card = document.createElement('div');
+      card.className = 'topic-card';
+      card.onclick = () => sendQuick(`Tell me about ${tc.label}: ${tc.keywords?.join(', ')}`);
+      card.innerHTML = `
+        <div class="topic-card-header">
+          <span class="topic-num">${tc.label}</span>
+          <span class="topic-range">msgs ${tc.message_range}</span>
+          <span class="topic-count">${tc.message_count} msgs</span>
+        </div>
+        <div class="topic-keywords">${(tc.keywords||[]).map(k=>`<span class="kw-tag">${k}</span>`).join('')}</div>
+        <div class="topic-summary">${tc.summary?.slice(0,200)}${tc.summary?.length > 200 ? '...' : ''}</div>
+      `;
+      el.appendChild(card);
+    }
+  } catch(e) {
+    document.getElementById('topics-list').innerHTML = '<p style="color:var(--red);font-size:12px;padding:20px">Failed to load topics</p>';
+  }
+}
+
+// ── CHECKPOINTS ──────────────────────────────────────────────
+
+async function loadCheckpoints() {
+  try {
+    const r = await fetch(`${API}/api/checkpoints?per_page=50`);
+    const d = await r.json();
+    const el = document.getElementById('checkpoints-list');
+    el.innerHTML = `<div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:16px">
+      ${d.total} × 100-message checkpoints
+    </div>`;
+    for (const mc of d.checkpoints) {
+      const card = document.createElement('div');
+      card.className = 'checkpoint-card';
+      card.innerHTML = `
+        <div class="cp-id">#${mc.chunk_id}</div>
+        <div>
+          <div class="cp-range">Messages ${mc.message_range} | Days ${mc.start_day}–${mc.end_day}</div>
+          <div class="cp-summary">${mc.summary?.slice(0,200)}${mc.summary?.length > 200 ? '...' : ''}</div>
+        </div>
+      `;
+      el.appendChild(card);
+    }
+  } catch(e) {
+    document.getElementById('checkpoints-list').innerHTML = '<p style="color:var(--red);font-size:12px;padding:20px">Failed to load checkpoints</p>';
+  }
+}
+
+// ── TABS ─────────────────────────────────────────────────────
+
+let topicsLoaded = false;
+let checkpointsLoaded = false;
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['chat','topics','checkpoints'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+
+  if (name === 'topics' && !topicsLoaded) { loadTopics(); topicsLoaded = true; }
+  if (name === 'checkpoints' && !checkpointsLoaded) { loadCheckpoints(); checkpointsLoaded = true; }
+}
+
+// ── CHAT ─────────────────────────────────────────────────────
+
+let isBusy = false;
+
+function addMessage(role, text, sources) {
+  const container = document.getElementById('chat-messages');
+
+  // Remove welcome if present
+  const welcome = container.querySelector('.welcome-msg');
+  if (welcome) welcome.remove();
+
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = role === 'bot' ? md(text) : text.replace(/</g,'&lt;');
+  div.appendChild(bubble);
+
+  if (sources && sources.topics && sources.topics.length > 0) {
+    const row = document.createElement('div');
+    row.className = 'sources-row';
+    for (const t of sources.topics.slice(0,3)) {
+      const tag = document.createElement('span');
+      tag.className = 'source-tag';
+      tag.textContent = `${t.label} (${Math.round(t.score*100)}%)`;
+      row.appendChild(tag);
+    }
+    div.appendChild(row);
+  }
+
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta';
+  meta.textContent = timeAgo();
+  div.appendChild(meta);
+
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function addTyping() {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.id = 'typing-indicator';
+  div.innerHTML = `<div class="typing-indicator">
+    <span class="typing-dot"></span>
+    <span class="typing-dot"></span>
+    <span class="typing-dot"></span>
+  </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+async function sendMessage() {
+  if (isBusy) return;
+  const input = document.getElementById('chat-input');
+  const query = input.value.trim();
+  if (!query) return;
+
+  input.value = '';
+  input.style.height = '';
+  isBusy = true;
+  document.getElementById('send-btn').disabled = true;
+
+  addMessage('user', query);
+  addTyping();
+
+  try {
+    const r = await fetch(`${API}/api/chat`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({query})
+    });
+    const d = await r.json();
+    removeTyping();
+    addMessage('bot', d.answer || 'No answer generated.', d.sources);
+  } catch(e) {
+    removeTyping();
+    addMessage('bot', '⚠ Error connecting to server. Make sure the API is running.');
+  }
+
+  isBusy = false;
+  document.getElementById('send-btn').disabled = false;
+  input.focus();
+}
+
+function sendQuick(q) {
+  switchTab('chat');
+  document.getElementById('chat-input').value = q;
+  sendMessage();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = '';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+
+loadStats();
+loadPersona();
+</script>
+</body>
+</html>
